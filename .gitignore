@@ -1,0 +1,15 @@
+node_modules
+.env
+
+/cache
+/artifacts
+
+/typechain
+/typechain-types
+
+/coverage
+/coverage.json
+/coverage.lcov
+/coverage-summary.json
+/coverage-summary.html
+/coverage-summary.json
