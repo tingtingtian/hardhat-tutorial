@@ -17,7 +17,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 contract FundMe {
     mapping (address => uint256) public fundersToAmount;
 
-    AggregatorV3Interface internal dataFeed;
+    AggregatorV3Interface public dataFeed;
     //设置最小额度，方便管理
     uint256 constant MINIMUM_VALUE = 100 * 10 ** 18 ;//单位是USD
 
@@ -46,10 +46,14 @@ contract FundMe {
         _;
     }
 
-    constructor(uint256 _lockTime) {
+    event FundWithdrawByOwner(uint256 amount);
+    event RefundByFunder(address funder,uint256 amount);
+
+    constructor(uint256 _lockTime,address dataFeedAddr) {
         //sepolia testnet
         dataFeed = AggregatorV3Interface(
-            0x694AA1769357215DE4FAC081bf1f309aDC325306
+           // 0x694AA1769357215DE4FAC081bf1f309aDC325306
+           dataFeedAddr
         );
         owner = msg.sender;
         deploymentTimesstamp = block.timestamp;
@@ -114,12 +118,16 @@ contract FundMe {
         //3、call:以太坊官方推荐的，transfer ETH with data return value of function and bool
         //aadr.call("fund") //调用fund函数
         //addr.call{value: value}("fund") //捐款多少
-        (bool success, ) = payable (msg.sender).call{value:address(this).balance}("");
+        bool success;
+        uint256 balance = address(this).balance;
+        (success, ) = payable (msg.sender).call{value: balance}("");
         require(success,"tx failed");
         //把账户归零
         fundersToAmount[msg.sender]=0;
         getFundSuccess = true;
 
+        //emit event
+        emit FundWithdrawByOwner(balance);
 
         //详细对比：send、transfer、call是否会消耗gas
         //操作方式	成功时的gas 消耗   失败时的 gas 消耗	错误处理机制
@@ -144,10 +152,14 @@ contract FundMe {
         require(fundersToAmount[msg.sender]!=0,"there is no fund for you");
         //require(block.timestamp>=deploymentTimesstamp+lockTime,"window is not close");
         //require(fundersToAmount[msg.sender]<=);
-        (bool success,) = payable (msg.sender).call{value:fundersToAmount[msg.sender]}("");
+
+        bool success;
+        uint256 balance = fundersToAmount[msg.sender];
+        (success, )= payable (msg.sender).call{value:balance}("");
         require(success,"tx failed");
         //把账户归零
         fundersToAmount[msg.sender]=0;
+        emit RefundByFunder(msg.sender,balance);
     }
         // 个人理解：Solidity 编程可以理解为一种 面向多用户、多角色 的编程模式。
         // 1. 多用户（Multi-User）编程
